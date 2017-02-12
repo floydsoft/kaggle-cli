@@ -20,7 +20,6 @@ class Download(Command):
 
     def take_action(self, parsed_args):
         config = get_final_config(parsed_args)
-        print(config)
 
         username = config['username']
         password = config['password']
