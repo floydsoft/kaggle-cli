@@ -35,7 +35,7 @@ def get_working_config(configs):
     return reduce(
         lambda working_config, config:
             merge_dicts(config, working_config),
-        map(lambda config: dict(config['user']), configs)
+        map(lambda config: dict(config['user']), configs) or [{}]
     )
 
 
