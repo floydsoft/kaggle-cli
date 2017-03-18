@@ -6,6 +6,8 @@ from cliff.command import Command
 from . import common
 from .config import get_final_config
 
+import progressbar
+from contextlib import closing
 
 class Download(Command):
     'Download data files from a specific competition.'
@@ -46,12 +48,34 @@ class Download(Command):
         self.app.stdout.write('downloading %s\n' % url)
         local_filename = url.split('/')[-1]
         headers = {}
+        file_size = 0
+        total_size = 0
+        bar = progressbar.ProgressBar()
 
         if os.path.isfile(local_filename):
             file_size = os.path.getsize(local_filename)
             headers['Range'] = 'bytes={}-'.format(file_size)
 
+        with closing(browser.get(url, stream=True)) as stream_orig:
+            total_size = int(stream_orig.headers['Content-Length'].strip())
+
+        self.bytes = file_size
+
         stream = browser.get(url, stream=True, headers=headers)
+
+        widgets = [local_filename,' ',progressbar.Percentage(),' ', progressbar.Bar(marker="#"),
+               ' ', progressbar.ETA(), ' ', progressbar.FileTransferSpeed()]
+
+        if file_size == total_size:
+            print local_filename+" already downloaded !"
+            return local_filename
+        elif file_size > total_size :
+            print "Something wrong here, Incorrect file !"
+            return
+        else :
+            bar = progressbar.ProgressBar(widgets = widgets, maxval=total_size).start()
+            if not self.bytes:
+                bar.update(self.bytes)
 
         if stream.headers.get('x-ms-copy-status', None) == 'success':
             if not self.is_downloadable(stream):
@@ -63,6 +87,9 @@ class Download(Command):
                 for chunk in stream.iter_content(chunk_size=1024, decode_unicode=True):
                     if chunk: # filter out keep-alive new chunks
                         f.write(chunk)
+                        self.bytes += len(chunk)
+                        bar.update(self.bytes)
+            bar.finish()
 
     def is_downloadable(self, response):
         """
