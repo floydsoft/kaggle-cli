@@ -11,18 +11,34 @@ CONFIG_FILE_NAME = 'config'
 DATA_OPTIONS = set(['username', 'password', 'competition'])
 
 
-def get_config_candidates(curdir):
-    # derive parent dir of homedir
-    while curdir != os.path.dirname(os.path.expanduser('~')):
-        config_path = os.path.join(
-            curdir, CONFIG_DIR_NAME, CONFIG_FILE_NAME
-        )
-        if os.path.isfile(config_path):
-            config = ConfigParser(allow_no_value=True)
+def get_config(config_path):
+    if os.path.isfile(config_path):
+        config = ConfigParser(allow_no_value=True)
+        try:
             config_file = open(config_path)
             config.read_file(config_file)
-            yield config
+            return config
+        except IOError:
+            pass
+
+
+def get_config_candidates(curdir):
+    while curdir != '/':
+        if curdir != os.path.expanduser('~'):
+            config_path = os.path.join(
+                curdir, CONFIG_DIR_NAME, CONFIG_FILE_NAME
+            )
+            config = get_config(config_path)
+            if config:
+                yield config
         curdir = os.path.dirname(curdir)  # derive parent dir
+
+    config_path = os.path.join(
+        os.path.expanduser('~'), CONFIG_DIR_NAME, CONFIG_FILE_NAME
+    )
+    config = get_config(config_path)
+    if config:
+        yield config
 
 
 def merge_dicts(x, y={}):
