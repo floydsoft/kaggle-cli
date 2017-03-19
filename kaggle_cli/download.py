@@ -51,24 +51,23 @@ class Download(Command):
         done = False
         file_size = 0
         total_size = 0
-        bar = progressbar.ProgressBar()
 
-        if os.path.isfile(local_filename):
->>>>>>> upstream/master
+        bar = progressbar.ProgressBar()
+        content_length = int(
+            browser.request('head', url).headers.get('Content-Length')
+        )
 
         if os.path.isfile(local_filename):
             file_size = os.path.getsize(local_filename)
-            content_length = int(
-                browser.request('head', url).headers.get('Content-Length')
-            )
             if file_size < content_length:
                 headers['Range'] = 'bytes={}-'.format(file_size)
             else:
                 done = True
 
         self.bytes = file_size
-        widgets = [local_filename, ' ', progressbar.Percentage(), ' ', progressbar.Bar(marker="#"),
-               ' ', progressbar.ETA(), ' ', progressbar.FileTransferSpeed()]
+        widgets = [local_filename, ' ', progressbar.Percentage(), ' ',
+                  progressbar.Bar(marker="#"), ' ',
+                  progressbar.ETA(), ' ', progressbar.FileTransferSpeed()]
 
         if file_size == content_length:
             print('{} already downloaded !'.format(local_filename))
@@ -77,7 +76,8 @@ class Download(Command):
             print("Something wrong here, Incorrect file !")
             return
         else :
-            bar = progressbar.ProgressBar(widgets=widgets, maxval=content_length).start()
+            bar = progressbar.ProgressBar(widgets=widgets, 
+                                          maxval=content_length).start()
             if not self.bytes:
                 bar.update(self.bytes)
 
