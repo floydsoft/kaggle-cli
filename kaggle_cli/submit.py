@@ -2,6 +2,9 @@ import os
 import time
 import re
 import json
+import uuid
+from argparse import ArgumentTypeError
+import zipfile
 
 from cliff.command import Command
 
@@ -21,6 +24,8 @@ class Submit(Command):
         parser.add_argument('-c', '--competition', help='competition')
         parser.add_argument('-u', '--username', help='username')
         parser.add_argument('-p', '--password', help='password')
+        parser.add_argument('-z', '--zip', type=self._str2bool, nargs='?', const=True, default=False,
+                            help='zip the submission file before uploading')
 
         return parser
 
@@ -30,6 +35,7 @@ class Submit(Command):
         username = config.get('username', '')
         password = config.get('password', '')
         competition = config.get('competition', '')
+        zip = config.get('zip', False)
 
         browser = common.login(username, password)
         base = 'https://www.kaggle.com'
@@ -39,6 +45,12 @@ class Submit(Command):
 
         entry = parsed_args.entry
         message = parsed_args.message
+
+        archive_name = Submit._rand_str(10)+'.zip'
+
+        if zip:
+            with zipfile.ZipFile(archive_name, 'w', zipfile.ZIP_DEFLATED) as zf:
+                zf.write(entry)
 
         competition_page = browser.get(competition_url)
 
@@ -51,18 +63,23 @@ class Submit(Command):
             str(competition_page.soup)
         ).group(1)
 
+        if zip:
+            target_name = archive_name
+        else:
+            target_name = entry
+
         form_submission = browser.post(
             file_form_url,
             data={
-                'fileName': entry,
-                'contentLength': os.path.getsize(entry),
-                'lastModifiedDateUtc': int(os.path.getmtime(entry) * 1000)
+                'fileName': target_name,
+                'contentLength': os.path.getsize(target_name),
+                'lastModifiedDateUtc': int(os.path.getmtime(target_name) * 1000)
             }
         ).json()
 
         file_submit_url = base + form_submission['createUrl']
 
-        with open(entry, 'rb') as submission_file:
+        with open(target_name, 'rb') as submission_file:
             token = browser.post(
                 file_submit_url,
                 files={
@@ -102,3 +119,25 @@ class Submit(Command):
             else:
                 print('something went wrong')
                 break
+
+        if zip:
+            os.remove(target_name)
+
+    @staticmethod
+    def _str2bool(v):
+        """
+        parse boolean values
+
+        https://stackoverflow.com/a/43357954/436721
+        :return:
+        """
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise ArgumentTypeError('Boolean value expected.')
+
+    @staticmethod
+    def _rand_str(length):
+        return uuid.uuid4().hex[:length-1]
