@@ -5,10 +5,9 @@ from itertools import starmap
 
 from cliff.command import Command
 
-
 CONFIG_DIR_NAME = '.kaggle-cli'
 CONFIG_FILE_NAME = 'config'
-DATA_OPTIONS = set(['username', 'password', 'competition'])
+DATA_OPTIONS = set(['username', 'password', 'competition', 'zip'])
 
 
 def get_config(config_path):
@@ -85,6 +84,7 @@ class Config(Command):
         parser.add_argument('-u', '--username', help='username')
         parser.add_argument('-p', '--password', help='password')
         parser.add_argument('-c', '--competition', help='competition')
+        parser.add_argument('-z', '--zip', help='zip the submission file before uploading?', action='store_true')
         parser.add_argument(
             '-g',
             '--global',
@@ -98,7 +98,7 @@ class Config(Command):
         parsed_arg_dict = vars(parsed_args)
 
         if DATA_OPTIONS & set(
-            filter(lambda x: parsed_arg_dict[x], parsed_arg_dict)
+                filter(lambda x: parsed_arg_dict[x], parsed_arg_dict)
         ):
             if parsed_arg_dict['global']:
                 config_dir = os.path.join(
@@ -134,6 +134,11 @@ class Config(Command):
                     'user', 'competition',
                     parsed_arg_dict['competition']
                 )
+
+            if parsed_arg_dict['zip']:
+                config.set('user', 'zip', 'yes')
+            else:
+                config.set('user', 'zip', 'no')
 
             with open(config_path, 'w') as config_file:
                 config.write(config_file)
