@@ -25,7 +25,7 @@ class Submit(Command):
         parser.add_argument('-u', '--username', help='username')
         parser.add_argument('-p', '--password', help='password')
         parser.add_argument('-z', '--zip', type=self._str2bool, nargs='?', const=True, default=False,
-                            help='zip the submission file before uploading')
+                            help='whether to zip the submission file before uploading')
 
         return parser
 
@@ -35,7 +35,12 @@ class Submit(Command):
         username = config.get('username', '')
         password = config.get('password', '')
         competition = config.get('competition', '')
-        zip = config.get('zip', False)
+        zip_flag = config.get('zip', 'no')
+
+        if Submit._str2bool(zip_flag):
+            zip = True
+        else:
+            zip = False
 
         browser = common.login(username, password)
         base = 'https://www.kaggle.com'
@@ -46,7 +51,7 @@ class Submit(Command):
         entry = parsed_args.entry
         message = parsed_args.message
 
-        archive_name = Submit._rand_str(10)+'.zip'
+        archive_name = Submit._rand_str(10) + '.zip'
 
         if zip:
             with zipfile.ZipFile(archive_name, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -122,10 +127,11 @@ class Submit(Command):
     @staticmethod
     def _str2bool(v):
         """
-        parse boolean values
+        parse truthy/falsy strings into booleans
 
         https://stackoverflow.com/a/43357954/436721
-        :return:
+        :param v: the string to be parsed
+        :return: a boolean value
         """
         if v.lower() in ('yes', 'true', 't', 'y', '1'):
             return True
@@ -136,4 +142,12 @@ class Submit(Command):
 
     @staticmethod
     def _rand_str(length):
-        return uuid.uuid4().hex[:length-1]
+        """
+        this is used to prevent caching issues
+
+        https://stackoverflow.com/a/34017605/436721
+
+        :param length: integer length
+        :return: a random string of the given length
+        """
+        return uuid.uuid4().hex[:length - 1]
