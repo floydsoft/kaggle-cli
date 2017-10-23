@@ -98,7 +98,7 @@ class Config(Command):
         parsed_arg_dict = vars(parsed_args)
 
         if DATA_OPTIONS & set(
-                filter(lambda x: parsed_arg_dict[x], parsed_arg_dict)
+            filter(lambda x: parsed_arg_dict[x], parsed_arg_dict)
         ):
             if parsed_arg_dict['global']:
                 config_dir = os.path.join(

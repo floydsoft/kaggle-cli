@@ -24,8 +24,7 @@ class Submit(Command):
         parser.add_argument('-c', '--competition', help='competition')
         parser.add_argument('-u', '--username', help='username')
         parser.add_argument('-p', '--password', help='password')
-        parser.add_argument('-z', '--zip', type=self._str2bool, nargs='?', const=True, default=False,
-                            help='whether to zip the submission file before uploading')
+        parser.add_argument('-z', '--zip', help='zip the submission file before uploading?', action='store_true')
 
         return parser
 
@@ -37,10 +36,7 @@ class Submit(Command):
         competition = config.get('competition', '')
         zip_flag = config.get('zip', 'no')
 
-        if Submit._str2bool(zip_flag):
-            zip = True
-        else:
-            zip = False
+        zip = Submit._str2bool(zip_flag)
 
         browser = common.login(username, password)
         base = 'https://www.kaggle.com'
@@ -51,7 +47,12 @@ class Submit(Command):
         entry = parsed_args.entry
         message = parsed_args.message
 
-        archive_name = Submit._rand_str(10) + '.zip'
+        archive_name = Submit._make_archive_name(entry)
+
+        # print(archive_name)
+        # print(zip)
+        #
+        # return
 
         if zip:
             with zipfile.ZipFile(archive_name, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -129,29 +130,38 @@ class Submit(Command):
             os.remove(target_name)
 
     @staticmethod
+    def _make_archive_name(original_file_path):
+        # if original name already has a suffix (csv,txt,etc), remove it
+        extension_pattern = r'(^.+)\.(.+)$'
+
+        # file may be in another directory
+        original_basename = os.path.basename(original_file_path)
+
+        if re.match(extension_pattern,original_basename):
+            archive_name = re.sub(extension_pattern,r'\1.zip',original_basename)
+        else:
+            archive_name = original_basename+".zip"
+
+        # this is used to prevent caching issues
+        string_prefix = uuid.uuid4().hex[:4]
+
+        prefixed_archive_name = string_prefix+"-"+archive_name
+
+        original_directory_path = os.path.dirname(original_file_path)
+
+        return os.path.join(original_directory_path,prefixed_archive_name)
+
+    @staticmethod
     def _str2bool(v):
         """
         parse truthy/falsy strings into booleans
-
         https://stackoverflow.com/a/43357954/436721
         :param v: the string to be parsed
         :return: a boolean value
         """
-        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        if v is True or v.lower() in ('yes', 'true', 't', 'y', '1'):
             return True
-        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        elif v is False or v.lower() in ('no', 'false', 'f', 'n', '0'):
             return False
         else:
             raise ArgumentTypeError('Boolean value expected.')
-
-    @staticmethod
-    def _rand_str(length):
-        """
-        this is used to prevent caching issues
-
-        https://stackoverflow.com/a/34017605/436721
-
-        :param length: integer length
-        :return: a random string of the given length
-        """
-        return uuid.uuid4().hex[:length - 1]
