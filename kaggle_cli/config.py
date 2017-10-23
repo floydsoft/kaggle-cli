@@ -118,6 +118,11 @@ class Config(Command):
         parser.add_argument('-p', '--password', help='password')
         parser.add_argument('-c', '--competition', help='competition')
         parser.add_argument(
+            '-z',
+            '--zip',
+            help='zip the submission file before uploading?',
+            action='store_true')
+        parser.add_argument(
             '-g',
             '--global',
             action='store_true',
@@ -165,6 +170,11 @@ class Config(Command):
                 config.set(
                     'user', 'competition',
                     parsed_arg_dict['competition']
+                )
+
+            if parsed_arg_dict['zip']:
+                config.set(
+                    'user','zip','yes'
                 )
 
             with open(config_path, 'w') as config_file:
