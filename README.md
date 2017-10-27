@@ -22,6 +22,12 @@ To submit an entry.
 $ kg submit <submission-file> -u <username> -p <password> -c <competition> -m "<message>"
 ```
 
+Optionally, add `-z` to zip the submission file before uploading:
+
+```
+$ kg submit <submission-file> -u <username> -p <password> -c <competition> -z -m "<message>"
+```
+
 ### Download
 To download the data files (resumable).
 
@@ -52,6 +58,8 @@ $ kg dataset -u <username> -p <password> -o <owner> -d <dataset>
 
 ### Config
 To set global config.
+
+> Optional: add `-z` to zip submission files before uploading.
 
 ```
 $ kg config -g -u <username> -p <password> -c <competition>
