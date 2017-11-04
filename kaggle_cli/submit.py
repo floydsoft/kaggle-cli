@@ -2,6 +2,10 @@ import os
 import time
 import re
 import json
+import sys
+import uuid
+from argparse import ArgumentTypeError
+import zipfile
 
 from cliff.command import Command
 
@@ -21,6 +25,7 @@ class Submit(Command):
         parser.add_argument('-c', '--competition', help='competition')
         parser.add_argument('-u', '--username', help='username')
         parser.add_argument('-p', '--password', help='password')
+        parser.add_argument('-z', '--zip', help='zip the submission file before uploading?', action='store_true')
 
         return parser
 
@@ -30,6 +35,7 @@ class Submit(Command):
         username = config.get('username', '')
         password = config.get('password', '')
         competition = config.get('competition', '')
+        zip = config.get('zip', False)
 
         browser = common.login(username, password)
         base = 'https://www.kaggle.com'
@@ -39,6 +45,12 @@ class Submit(Command):
 
         entry = parsed_args.entry
         message = parsed_args.message
+
+        archive_name = make_archive_name(entry)
+
+        if zip:
+            with zipfile.ZipFile(archive_name, 'w', zipfile.ZIP_DEFLATED) as zf:
+                zf.write(entry)
 
         competition_page = browser.get(competition_url)
 
@@ -51,18 +63,23 @@ class Submit(Command):
             str(competition_page.soup)
         ).group(1)
 
+        if zip:
+            target_name = archive_name
+        else:
+            target_name = entry
+
         form_submission = browser.post(
             file_form_url,
             data={
-                'fileName': entry,
-                'contentLength': os.path.getsize(entry),
-                'lastModifiedDateUtc': int(os.path.getmtime(entry) * 1000)
+                'fileName': target_name,
+                'contentLength': os.path.getsize(target_name),
+                'lastModifiedDateUtc': int(os.path.getmtime(target_name) * 1000)
             }
         ).json()
 
         file_submit_url = base + form_submission['createUrl']
 
-        with open(entry, 'rb') as submission_file:
+        with open(target_name, 'rb') as submission_file:
             token = browser.post(
                 file_submit_url,
                 files={
@@ -79,10 +96,10 @@ class Submit(Command):
             headers={
                 'Content-Type': 'application/json'
             }
-        ).json()['pageMessages'][0]
+        ).json()['pageMessages']
 
-        if entry_form_resp_message['type'] == 'error':
-            print(entry_form_resp_message['dangerousHtmlMessage'])
+        if entry_form_resp_message and entry_form_resp_message[0]['type'] == 'error':
+            print(entry_form_resp_message[0]['dangerousHtmlMessage'])
             return
 
         status_url = (
@@ -102,3 +119,24 @@ class Submit(Command):
             else:
                 print('something went wrong')
                 break
+
+        if zip:
+            os.remove(target_name)
+
+
+def make_archive_name(original_file_path):
+
+    # if original name already has a suffix (csv,txt,etc), remove it
+    extension_pattern = r'(^.+)\.(.+)$'
+
+    # file may be in another directory
+    original_basename = os.path.basename(original_file_path)
+
+    if re.match(extension_pattern,original_basename):
+        archive_name = re.sub(extension_pattern,r'\1.zip',original_basename)
+    else:
+        archive_name = original_basename+".zip"
+
+    original_directory_path = os.path.dirname(original_file_path)
+
+    return os.path.join(original_directory_path,archive_name)
