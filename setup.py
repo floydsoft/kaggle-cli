@@ -42,7 +42,7 @@ setup(
     install_requires=[
         'cliff>=2.8.0,<2.9',
         'MechanicalSoup>=0.7.0,<0.9',
-        'lxml>=4.0.0,<4.1',
+        'lxml>=4.0.0,<=4.2.1',
         'cssselect>=1.0.1,<1.1',
         'configparser',
         'progressbar2>=3.34.3,<3.35',
